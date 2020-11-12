@@ -28,8 +28,8 @@ class ActionKitExport:
 
     def load(self) -> None:
         """Converts the CSVs to pandas tables"""
-        pdate = self.previous_date.replace('/','.').lstrip('0')
-        cdate = self.current_date.replace('/','.').lstrip('0')
+        pdate = self.previous_date.replace('/','.')
+        cdate = self.current_date.replace('/','.')
         previous_file = f'{self.path}metro_dc_membership_list-{pdate}.csv'
         current_file = f'{self.path}metro_dc_membership_list-{cdate}.csv'
         self.previous_df = pd.read_csv(previous_file,header=0)
@@ -58,7 +58,7 @@ class ActionKitExport:
         # Changes applied to people who have left the chapter
         no_longer_current_member_df['membership_status'] = ''
         no_longer_current_member_df['Xdate'] = ''
-        no_longer_current_member_df['Left Chapter Date'] = self.current_date
+        no_longer_current_member_df['Left Chapter Date'] = pd.to_datetime(self.current_date).strftime('%Y/%m/%d')
 
         # Random tweak as this member routinely disappears from our roster
         no_longer_current_member_df.drop(no_longer_current_member_df.loc[
@@ -71,6 +71,10 @@ class ActionKitExport:
     def clean(self):
 
         for df,date in [[self.previous_df,self.previous_date],[self.current_df,self.current_date]]: # Maybe just for current_df
+            # Drop duplicates. Only focus on Email duplicates as some members are updated within the csv with new field
+            # values (see 6/12/20 member csv for an example of this)
+            df.drop_duplicates(subset=['Email'],inplace=True)
+
             # Change NaNs to blank
             df.fillna('',inplace=True)
 
@@ -103,28 +107,27 @@ class ActionKitExport:
             # On import, pandas makes the AK_ID column an int64. Must be type str to be submitted to the API
             df['AK_ID'] = df['AK_ID'].astype(str)
 
-            # Convert dates MM/DD/YYYY format
-            df['Xdate'] = pd.to_datetime(df['Xdate']).dt.strftime('%m/%d/%Y')
-            df['Join_Date'] = pd.to_datetime(df['Join_Date']).dt.strftime('%m/%d/%Y')
+            # Convert dates YYYY/MM/DD format (necessary for AN to interpret it as a date)
+            df['Xdate'] = pd.to_datetime(df['Xdate']).dt.strftime('%Y/%m/%d')
+            df['Join_Date'] = pd.to_datetime(df['Join_Date']).dt.strftime('%Y/%m/%d')
 
             # National reports that a member is expired if their dues expired more than a year ago. But we count them
             # only as expired if their dues expired more than two years ago. They are marked a Member if their dues
             # expired between 1 and 2 years ago and a Member in Good Standing otherwise.
             df['Xdate'] = pd.to_datetime(df['Xdate'])
-            df.loc[df['Xdate'] < pd.to_datetime(date)-pd.to_timedelta(2*365, unit='d'), 'membership_status'] = "Expired"
-            df.loc[(df['Xdate'] > pd.to_datetime(date)-pd.to_timedelta(2*365, unit='d')) &
-                                        (df['Xdate'] < pd.to_datetime(date)), 'membership_status'] = "Member"
-            df.loc[df['Xdate'] > pd.to_datetime(date), 'membership_status'] = "Member in Good Standing"
-            df['Xdate'] = df['Xdate'].dt.strftime('%m/%d/%Y')
+            #df.loc[df['Xdate'] < pd.to_datetime(date)-pd.to_timedelta(2*365, unit='d'), 'membership_status'] = "Expired"
+            #df.loc[(df['Xdate'] > pd.to_datetime(date)-pd.to_timedelta(2*365, unit='d')) &
+            #                            (df['Xdate'] <= pd.to_datetime(date)), 'membership_status'] = "Member"
+            #df.loc[df['Xdate'] > pd.to_datetime(date), 'membership_status'] = "Member in Good Standing"
+            df['Xdate'] = df['Xdate'].dt.strftime('%Y/%m/%d')
 
             # Individual updates (as members convey updates without actually updating their national profile)
             df.loc[df['Email'] == 'aaron.samsel@nlrb.gov', 'Email'] = 'aaron.samsel@gmail.com'
             df.loc[df['Email'] == 'salimadofo@salim4dc.com', 'Email'] = 'info@salimadofo.com'
             df.loc[df['Email'] == 'nima@kandoo.tech', 'Email'] = 'nima.fatemi@gmail.com'
-
         # Find which members have an Xdate that has changed (don't include new members)
-        jf = self.current_df.merge(self.previous_df, on=['Email','Xdate'],how='outer')
+        jf = self.current_df.merge(self.previous_df, on=['Email','Xdate'],how='left')
         new_xdate_df = jf.loc[jf['AK_ID_y'].isna()]
         self.current_df['Membership Renewed Date'] = ''
-        self.current_df['Membership Renewed Date'].iloc[new_xdate_df.index] = self.current_date
+        self.current_df['Membership Renewed Date'].iloc[new_xdate_df.index] = pd.to_datetime(self.current_date).strftime('%Y/%m/%d')
         #pd.to_datetime(self.current_df['Xdate'].iloc[new_xdate_df.index])-pd.to_timedelta(365, unit='d')
