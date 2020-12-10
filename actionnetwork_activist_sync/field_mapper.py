@@ -48,20 +48,20 @@ class FieldMapper:
 
     def get_custom_fields(self):
         """Formats custom fields"""
-
+        # 12/04/2020 UPDATE: 'Organization' and 'monthly status'
         custom_fields = {
             'DSAn ID': self.exported_person['AK_ID'],
             'Dues Expiration Date': self.exported_person['Xdate'],
             'Join Date': self.exported_person['Join_Date'],
             'Middle Name': self.exported_person['middle_name'],
             'suffix': self.exported_person['suffix'],
-            'Organization': self.exported_person['Organization'],
+            #'Organization': self.exported_person['Organization'],
             'Phone': self.exported_person['Phone'],
             'union_member': self.exported_person['union_member'],
             'union_name': self.exported_person['union_name'],
             'union_local': self.exported_person['union_local'],
             'membership_type': self.exported_person['membership_type'],
-            'monthly_status': self.exported_person['monthly_status'],
+            #'monthly_status': self.exported_person['monthly_status'],
             'membership_status': self.exported_person['membership_status'],
             'student_yes_no': self.exported_person['student_yes_no'],
             'student_school_name': self.exported_person['student_school_name'],

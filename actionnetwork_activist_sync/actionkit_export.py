@@ -75,6 +75,22 @@ class ActionKitExport:
             # values (see 6/12/20 member csv for an example of this)
             df.drop_duplicates(subset=['Email'],inplace=True)
 
+            # From 12/04/2020 onward, national started providing both billing and mailing addresses
+            if pd.to_datetime(date) >= pd.to_datetime('12/04/2020'):
+                df['Address_Line_1'] = df['Mailing_Address1']
+                df['Address_Line_2'] = df['Mailing_Address2']
+                df['City'] = df['Mailing_City']
+                df['State'] = df['Mailing_State']
+                df['Zip'] = df['Mailing_Zip']
+                # Not all Mailing addresses are filled out? So use Billing if blank
+                df.loc[df['Address_Line_1'].isna(), 'Address_Line_2'] = df['Billing_Address_Line_2']
+                df.loc[df['Address_Line_1'].isna(), 'City'] = df['Billing_City']
+                df.loc[df['Address_Line_1'].isna(), 'State'] = df['Billing_State']
+                df.loc[df['Address_Line_1'].isna(), 'Zip'] = df['Billing_Zip']
+                df.loc[df['Address_Line_1'].isna(), 'Address_Line_1'] = df['Billing_Address_Line_1']
+
+                df['Country'] = 'United States'
+
             # Change NaNs to blank
             df.fillna('',inplace=True)
 
