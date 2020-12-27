@@ -58,10 +58,10 @@ def full_member_pull():
                      '_links.osdi:submissions.href','_links.osdi:donations.href', '_links.osdi:taggings.href',
                      '_links.osdi:outreaches.href','_links.osdi:attendances.href']
         df.drop(drop_cols,axis=1,inplace=True)
-        df.to_csv(f'ActionNetwork_full_member_export_{datetime.datetime.now().date()}',index=False)
+        df.to_csv(f'ActionNetwork_full_member_export_{datetime.datetime.now().date()}.csv',index=False)
         email_dfs.append(df['email_address'])
     totdf = pd.concat(email_dfs)
-    totdf.drop_duplicates().to_csv(f'ActionNetwork_full_member_email_export_{datetime.datetime.now().date()}',
+    totdf.drop_duplicates().to_csv(f'ActionNetwork_full_member_email_export_{datetime.datetime.now().date()}.csv',
                                    index=False,header=False)
 
 if __name__ == "__main__":

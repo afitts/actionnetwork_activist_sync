@@ -77,17 +77,26 @@ class ActionKitExport:
 
             # From 12/04/2020 onward, national started providing both billing and mailing addresses
             if pd.to_datetime(date) >= pd.to_datetime('12/04/2020'):
+                df.loc[df['Mailing_State'] == 'Maryland', 'State'] = 'MD'
+                df.loc[(df['Mailing_State'] == 'District of Columbia') | (df['State'] == 'Washington D.C.'), 'State'] = 'DC'
+                df.loc[df['Mailing_State'] == 'Virginia', 'State'] = 'VA'
                 df['Address_Line_1'] = df['Mailing_Address1']
                 df['Address_Line_2'] = df['Mailing_Address2']
                 df['City'] = df['Mailing_City']
                 df['State'] = df['Mailing_State']
                 df['Zip'] = df['Mailing_Zip']
-                # Not all Mailing addresses are filled out? So use Billing if blank
-                df.loc[df['Address_Line_1'].isna(), 'Address_Line_2'] = df['Billing_Address_Line_2']
-                df.loc[df['Address_Line_1'].isna(), 'City'] = df['Billing_City']
-                df.loc[df['Address_Line_1'].isna(), 'State'] = df['Billing_State']
-                df.loc[df['Address_Line_1'].isna(), 'Zip'] = df['Billing_Zip']
-                df.loc[df['Address_Line_1'].isna(), 'Address_Line_1'] = df['Billing_Address_Line_1']
+                df['County'] = [self.zipsearch.by_zipcode(x).to_dict()['county'] for x in df['Zip'].str[0:5].values]
+                # Not all Mailing addresses are filled out? So use Billing if blank, or if mailing address is outside
+                # Metro DC area
+                bad_mail_addy = (df['Address_Line_1'].isna() |
+                                 ((df['State'] != 'DC') & (df['State'] != 'MD') & (df['State'] != 'VA')) |
+                                 ((df['County'] != 'District of Columbia') & (df['County'] != 'Prince George\'s County')
+                                  & (df['County'] !='Montgomery County') & (df['State'] != 'VA')))
+                df.loc[bad_mail_addy, 'Address_Line_2'] = df['Billing_Address_Line_2']
+                df.loc[bad_mail_addy, 'City'] = df['Billing_City']
+                df.loc[bad_mail_addy, 'State'] = df['Billing_State']
+                df.loc[bad_mail_addy, 'Zip'] = df['Billing_Zip']
+                df.loc[bad_mail_addy, 'Address_Line_1'] = df['Billing_Address_Line_1']
 
                 df['Country'] = 'United States'
 
@@ -111,11 +120,26 @@ class ActionKitExport:
             df.drop(['Mobile_Phone','Home_Phone','Work_Phone'], axis=1, inplace=True)
 
             # Grab county using zip code
+            df['Branch'] = ''
             df['County'] = [self.zipsearch.by_zipcode(x).to_dict()['county'] for x in df['Zip'].str[0:5].values]
-            df.loc[(df['County'] == 'District of Columbia'), 'County'] = 'DC'
-            df.loc[(df['County'] == 'Prince George\'s County'), 'County'] = 'PGC'
-            df.loc[(df['County'] == 'Montgomery County') | (df['County'] == 'Frederick County'), 'County'] = 'MOCO'
-            df.loc[~((df['County'] == 'DC') | (df['County'] == 'PGC') | (df['County'] == 'MOCO')), 'County'] = 'NOVA'
+            df.loc[(df['County'] == 'District of Columbia'), 'Branch'] = 'DC'
+            df.loc[(df['County'] == 'Prince George\'s County'), 'Branch'] = 'PGC'
+
+            # Apparently there is a Montgomery County in VA. Also Frederick County is considered part
+            # the MOCO Branch for now.
+            df.loc[((df['County'] == 'Montgomery County') & (df['State'] == 'MD')) |
+                   (df['County'] == 'Frederick County'), 'Branch'] = 'MOCO'
+
+            # Rando who put their state wrong
+            df.loc[df['Email'] == 'jmatthewweber@gmail.com', 'Branch'] = 'MOCO'
+
+            # NoVA Branch has very specific counties
+            df.loc[df['County'].isin(['Arlington County', 'Fauquier County', 'Fairfax County', 'Fairfax city',
+                                      'Prince William County', 'Loudoun County', 'Falls Church city', 'Alexandria city',
+                                      'Manassas city', 'Manassas Park city']), 'Branch'] = 'NOVA'
+
+            # All the rest go to DC, including those in VA
+            df.loc[(df['Branch'] == ''), 'Branch'] = 'DC'
 
             # Action Network API expects [Address_Line_1,Address_Line_2]
             df['Address'] = df[['Address_Line_1','Address_Line_2']].fillna('').values.tolist()

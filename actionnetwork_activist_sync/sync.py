@@ -57,8 +57,8 @@ def sync(path, previous_date, current_date,branches,dry_run=True):
         # People where are no longer in the current spreadsheet, but were
         # in the previous one have had their membership lapse.
         members_left_branch_df = actionkit_export.get_previous_not_in_current()
-        members_left_branch_df = members_left_branch_df.loc[actionkit_export.get_previous_not_in_current()['County']==i]
-        current_branch_df = actionkit_export.current_df.loc[actionkit_export.current_df['County'] == i]
+        members_left_branch_df = members_left_branch_df.loc[actionkit_export.get_previous_not_in_current()['Branch']==i]
+        current_branch_df = actionkit_export.current_df.loc[actionkit_export.current_df['Branch'] == i]
 
         for index, row in members_left_branch_df.iterrows():
 
