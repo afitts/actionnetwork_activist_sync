@@ -28,6 +28,7 @@ def full_member_pull():
         else:
             print(f"Unknown Branch {branch}")
 
+    dfs = []
     email_dfs = []
     for api in actionnetwork_dict.values():
         all_people = get_all_people(api=api)
@@ -59,10 +60,13 @@ def full_member_pull():
                      '_links.osdi:outreaches.href','_links.osdi:attendances.href']
         df.drop(drop_cols,axis=1,inplace=True)
         df.to_csv(f'ActionNetwork_full_member_export_{datetime.datetime.now().date()}.csv',index=False)
+        dfs.append(df)
         email_dfs.append(df['email_address'])
-    totdf = pd.concat(email_dfs)
-    totdf.drop_duplicates().to_csv(f'ActionNetwork_full_member_email_export_{datetime.datetime.now().date()}.csv',
+    totdfs = pd.concat(dfs)
+    totemaildf = pd.concat(email_dfs)
+    totemaildf.drop_duplicates().to_csv(f'ActionNetwork_full_member_email_export_{datetime.datetime.now().date()}.csv',
                                    index=False,header=False)
+    return totdfs
 
 if __name__ == "__main__":
     full_member_pull()
